@@ -39,13 +39,16 @@ jobs:
           git push
 
       # Deploys index.html to GitHub Pages. The repo's Pages source must be
-      # set to "GitHub Actions" once (Settings -> Pages). Falls back fine
-      # until then: this step fails, the history commit above is already done.
+      # set to "GitHub Actions" once (Settings -> Pages), and the repo must
+      # allow Pages (public or paid plan for private). Both steps are
+      # non-fatal: without Pages the history commit above is still done.
       - name: Deploy report to GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
         with:
           path: .
       - name: Publish GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/deploy-pages@v4
+        continue-on-error: true
