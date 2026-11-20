@@ -2,9 +2,10 @@ name: scrape
 
 on:
   schedule:
-    # Every 30 minutes. GitHub schedules run on UTC and can be delayed
-    # by a few minutes under load; missed runs during outages are not caught up.
-    - cron: "*/30 * * * *"
+    # ~every 30 minutes. GitHub schedules run on UTC and can be delayed or
+    # dropped under load, so we fire at two offset minutes per hour as
+    # fallback for each other. A missed slot is simply skipped, not caught up.
+    - cron: "3,33 * * * *"
   workflow_dispatch:
 
 permissions:
