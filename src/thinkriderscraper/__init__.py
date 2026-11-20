@@ -292,6 +292,21 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   .tag {{ display: inline-block; background: var(--good); color: #06281a;
           font-size: .7rem; font-weight: 700; padding: .1rem .4rem;
           border-radius: .5rem; margin-left: .5rem; vertical-align: middle; }}
+  .history {{ background: var(--panel); border: 1px solid var(--border);
+              border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }}
+  .history h2 {{ font-size: .85rem; margin: 0 0 .75rem; color: var(--muted);
+                 text-transform: uppercase; letter-spacing: .05em; }}
+  .history svg {{ display: block; width: 100%; height: auto; }}
+  .history .tick {{ fill: var(--muted); font-size: 11px;
+                    font-family: ui-monospace, "SF Mono", Menlo, monospace; }}
+  .tablewrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+  @media (max-width: 640px) {{
+    body {{ padding: 1.25rem .75rem; }}
+    h1 {{ font-size: 1.2rem; }}
+    .best {{ padding: .85rem 1rem; }}
+    .best .price {{ font-size: 1.5rem; }}
+    td, th {{ padding: .5rem .6rem; font-size: .85rem; }}
+  }}
 </style>
 </head>
 <body>
@@ -304,6 +319,8 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="price">{best_price}</span>
     <span>on <a href="{best_url}" target="_blank" rel="noopener">{best_title}</a></span>
   </div>
+  {history_section}
+  <div class="tablewrap">
   <table>
     <thead><tr>
       <th>#</th><th>Product</th><th class="price">Price</th>
@@ -311,6 +328,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table>
+  </div>
 </div>
 <script>
 const RESULTS = {results_json};
@@ -333,13 +351,90 @@ RESULTS.forEach((p, i) => {{
 """
 
 
+def _load_history(history_path: Path) -> list[dict]:
+    if not history_path.exists():
+        return []
+    try:
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    return history if isinstance(history, list) else []
+
+
+def _render_history_svg(history: list[dict], currency: str) -> str:
+    """Render the best-price history as a self-contained inline SVG line chart."""
+    points = [
+        (entry["timestamp"], float(entry["best_price"]))
+        for entry in history
+        if isinstance(entry, dict)
+        and isinstance(entry.get("best_price"), (int, float))
+        and isinstance(entry.get("timestamp"), str)
+    ][-_CHART_MAX_POINTS:]
+    if len(points) < 2:
+        return ""
+
+    prices = [p for _, p in points]
+    lo, hi = min(prices), max(prices)
+    span = (hi - lo) or 1.0  # flat history: line sits at the bottom of the chart
+    n = len(prices)
+    pad, w, hgt = _SVG_PAD, _SVG_W, _SVG_H
+    coords = [
+        (
+            pad + (w - 2 * pad) * (i / (n - 1)),
+            hgt - pad - (hgt - 2 * pad) * ((price - lo) / span),
+        )
+        for i, price in enumerate(prices)
+    ]
+    polyline = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+    min_i, max_i = prices.index(lo), prices.index(hi)
+    min_x, min_y = coords[min_i]
+
+    return (
+        f'<svg viewBox="0 0 {w} {hgt}" preserveAspectRatio="xMidYMid meet" '
+        f'role="img" aria-label="Best price history">\n'
+        f'<text x="{pad}" y="14" class="tick">{hi:.2f} {currency}</text>\n'
+        f'<text x="{pad}" y="{hgt - 2}" class="tick">{lo:.2f} {currency}</text>\n'
+        f'<text x="{w - pad}" y="14" text-anchor="end" '
+        f'class="tick">{points[0][0][:10]}</text>\n'
+        f'<text x="{w - pad}" y="{hgt - 2}" text-anchor="end" '
+        f'class="tick">{points[-1][0][:10]}</text>\n'
+        f'<polyline points="{polyline}" fill="none" '
+        f'stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>\n'
+        f'<circle cx="{min_x:.1f}" cy="{min_y:.1f}" r="5" fill="var(--good)">\n'
+        f'<title>{lo:.2f} {currency} (lowest)</title>\n'
+        f"</circle>\n"
+        f"</svg>"
+    )
+
+
+def _render_history_section(history: list[dict], currency: str) -> str:
+    """Full history card, or an empty string while fewer than 2 data points exist."""
+    if len(history) < 2:
+        return ""
+    chart = _render_history_svg(history, currency)
+    if not chart:
+        return ""
+    shown = min(len(history), _CHART_MAX_POINTS)
+    return (
+        '<div class="history">\n'
+        f'<h2>Best price — last {shown} runs</h2>\n'
+        f"{chart}\n"
+        "</div>\n"
+    )
+
+
 def write_results_html(
-    products: list[Product], query: str, sort: str, out_path: Path | None = None
+    products: list[Product],
+    query: str,
+    sort: str,
+    out_path: Path | None = None,
+    history_path: Path | None = None,
 ) -> Path:
     """Write a self-contained index.html displaying the results.
 
     Defaults to <project root>/index.html regardless of the current
-    working directory.
+    working directory. Renders the best-price history chart from
+    <project root>/results_history.json when it has at least two entries.
     """
     out = out_path or Path(__file__).resolve().parents[2] / "index.html"
     best = min(products, key=lambda p: p.price)
@@ -355,6 +450,10 @@ def write_results_html(
         }
         for p in products
     ]
+    history = _load_history(
+        history_path or Path(__file__).resolve().parents[2] / "results_history.json"
+    )
+    history_section = _render_history_section(history, best.currency)
     html = _HTML_TEMPLATE.format(
         query=html_mod.escape(query),
         count=len(products),
@@ -363,6 +462,7 @@ def write_results_html(
         best_price=html_mod.escape(best.price_str()),
         best_url=html_mod.escape(best.url),
         best_title=html_mod.escape(best.title),
+        history_section=history_section,
         results_json=json.dumps(payload, ensure_ascii=False).replace("</", "<\\/"),
     )
     out.write_text(html, encoding="utf-8")
@@ -371,6 +471,10 @@ def write_results_html(
 
 # Keep the history file bounded even after months of 30-minute runs.
 HISTORY_MAX_ENTRIES = 20_000
+
+# Chart geometry (viewBox units; the SVG itself scales to container width).
+_SVG_W, _SVG_H, _SVG_PAD = 720, 220, 12
+_CHART_MAX_POINTS = 200
 
 
 def update_history(
@@ -382,14 +486,7 @@ def update_history(
     current working directory.
     """
     path = history_path or Path(__file__).resolve().parents[2] / "results_history.json"
-    history: list[dict] = []
-    if path.exists():
-        try:
-            history = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            history = []
-        if not isinstance(history, list):
-            history = []
+    history = _load_history(path)
 
     best = min(products, key=lambda p: p.price)
     history.append(
