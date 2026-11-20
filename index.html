@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThinkRider Scraper - ThinkRider XXPRO</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --border: #26314a;
+    --text: #e8ecf4; --muted: #8b96ad; --accent: #ff7a1a; --good: #3dcc8e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  .meta { color: var(--muted); margin-bottom: 1.5rem; }
+  .best {
+    display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; align-items: baseline;
+    background: var(--panel); border: 1px solid var(--good); border-radius: 10px;
+    padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+  }
+  .best .price { font-size: 1.9rem; font-weight: 700; color: var(--good); }
+  .best a { color: var(--accent); text-decoration: none; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+           border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { padding: .6rem .9rem; text-align: left; border-top: 1px solid var(--border); }
+  th { background: #1d2638; font-size: .8rem; text-transform: uppercase;
+        letter-spacing: .05em; color: var(--muted); border-top: none; }
+  tr.bestrow td { background: rgba(61, 220, 142, .08); }
+  td.price, th.price { white-space: nowrap; font-weight: 600; }
+  td.title a { color: var(--text); text-decoration: none; }
+  td.title a:hover { color: var(--accent); }
+  td.num { text-align: right; white-space: nowrap; color: var(--muted); }
+  td.rank { color: var(--muted); width: 2.5rem; }
+  .tag { display: inline-block; background: var(--good); color: #06281a;
+          font-size: .7rem; font-weight: 700; padding: .1rem .4rem;
+          border-radius: .5rem; margin-left: .5rem; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AliExpress price search</h1>
+  <p class="meta">Query <strong>ThinkRider XXPRO</strong> &middot; 4 results
+     (price-sorted) &middot; generated 2026-11-20 18:24</p>
+  <div class="best">
+    <span>Best price</span>
+    <span class="price">EUR 375.99</span>
+    <span>on <a href="https://www.aliexpress.com/item/1005008159422892.html" target="_blank" rel="noopener">ThinkRider XXPRO Direct Drive  Smart Bike Trainer Max 2500W Indoor Training Generate electricity by oneself Bicycle Roller</a></span>
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Product</th><th class="price">Price</th>
+      <th class="num">Rating</th><th class="num">Orders</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<script>
+const RESULTS = [{"title": "ThinkRider XXPRO Direct Drive  Smart Bike Trainer Max 2500W Indoor Training Generate electricity by oneself Bicycle Roller", "price": 375.99, "currency": "EUR", "rating": 4.9, "orders": 1876, "url": "https://www.aliexpress.com/item/1005008159422892.html", "is_best": true}, {"title": "ThinkRider XXPRO Direct Drive Smart Bike Trainer Max 2500W Indoor Training Generate Electricity By Oneself Bicycle Roller", "price": 401.39, "currency": "EUR", "rating": 4.8, "orders": 5137, "url": "https://www.aliexpress.com/item/1005008159596183.html", "is_best": false}, {"title": "ThinkRider XXPRO+ Direct Drive Smart Bike Trainer Foldable Indoor Training Generate Electricity By Oneself Bicycle Roller", "price": 412.69, "currency": "EUR", "rating": 4.9, "orders": 75, "url": "https://www.aliexpress.com/item/1005010641937971.html", "is_best": false}, {"title": "ThinkRider XXPRO+ Direct Drive Smart Bike Trainer Foldable Indoor Training Generate Electricity By Oneself Bicycle Roller", "price": 426.39, "currency": "EUR", "rating": 5.0, "orders": 32, "url": "https://www.aliexpress.com/item/1005011650017561.html", "is_best": false}];
+const rows = document.getElementById("rows");
+RESULTS.forEach((p, i) => {
+  const tr = document.createElement("tr");
+  if (p.is_best) tr.className = "bestrow";
+  const rating = p.rating ? p.rating.toFixed(1) : "n/a";
+  tr.innerHTML = `
+    <td class="rank">${i + 1}</td>
+    <td class="title"><a href="${p.url}" target="_blank" rel="noopener">${p.title}</a>${p.is_best ? '<span class="tag">BEST</span>' : ""}</td>
+    <td class="price">${p.currency} ${p.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+    <td class="num">${rating}</td>
+    <td class="num">${p.orders.toLocaleString()}</td>`;
+  rows.appendChild(tr);
+});
+</script>
+</body>
+</html>

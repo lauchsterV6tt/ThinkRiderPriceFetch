@@ -1,0 +1,51 @@
+name: scrape
+
+on:
+  schedule:
+    # Every 30 minutes. GitHub schedules run on UTC and can be delayed
+    # by a few minutes under load; missed runs during outages are not caught up.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run scraper
+        run: uv run python src/thinkriderscraper/__init__.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html results_history.json
+          git commit -m "Update results $(date -u +%Y-%m-%dT%H:%MZ)" || echo "No changes to commit"
+          git push
+
+      # Deploys index.html to GitHub Pages. The repo's Pages source must be
+      # set to "GitHub Actions" once (Settings -> Pages). Falls back fine
+      # until then: this step fails, the history commit above is already done.
+      - name: Deploy report to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Publish GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/deploy-pages@v4
