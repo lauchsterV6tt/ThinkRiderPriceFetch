@@ -257,7 +257,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ThinkRider Scraper - {query}</title>
+<title>ThinkRider XXpro Best Price Search</title>
 <style>
   :root {{
     --bg: #0f1420; --panel: #171e2e; --border: #26314a;
@@ -311,7 +311,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <div class="wrap">
-  <h1>AliExpress price search</h1>
+  <h1>ThinkRider XXpro Best Price Search</h1>
   <p class="meta">Query <strong>{query}</strong> &middot; {count} results
      ({sort}-sorted) &middot; generated {generated}</p>
   <div class="best">
