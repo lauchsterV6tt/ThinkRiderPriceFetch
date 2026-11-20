@@ -21,6 +21,7 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -395,9 +396,9 @@ def _render_history_svg(history: list[dict], currency: str) -> str:
         f'<text x="{pad}" y="14" class="tick">{hi:.2f} {currency}</text>\n'
         f'<text x="{pad}" y="{hgt - 2}" class="tick">{lo:.2f} {currency}</text>\n'
         f'<text x="{w - pad}" y="14" text-anchor="end" '
-        f'class="tick">{points[0][0][:10]}</text>\n'
+        f'class="tick">{_display_ts(points[0][0])}</text>\n'
         f'<text x="{w - pad}" y="{hgt - 2}" text-anchor="end" '
-        f'class="tick">{points[-1][0][:10]}</text>\n'
+        f'class="tick">{_display_ts(points[-1][0])}</text>\n'
         f'<polyline points="{polyline}" fill="none" '
         f'stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>\n'
         f'<circle cx="{min_x:.1f}" cy="{min_y:.1f}" r="5" fill="var(--good)">\n'
@@ -454,11 +455,12 @@ def write_results_html(
         history_path or Path(__file__).resolve().parents[2] / "results_history.json"
     )
     history_section = _render_history_section(history, best.currency)
+    now_local = datetime.now(DISPLAY_TZ)
     html = _HTML_TEMPLATE.format(
         query=html_mod.escape(query),
         count=len(products),
         sort=sort,
-        generated=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        generated=now_local.strftime("%Y-%m-%d %H:%M") + " " + now_local.tzname(),
         best_price=html_mod.escape(best.price_str()),
         best_url=html_mod.escape(best.url),
         best_title=html_mod.escape(best.title),
@@ -475,6 +477,20 @@ HISTORY_MAX_ENTRIES = 20_000
 # Chart geometry (viewBox units; the SVG itself scales to container width).
 _SVG_W, _SVG_H, _SVG_PAD = 720, 220, 12
 _CHART_MAX_POINTS = 200
+
+# Times are stored in UTC and displayed in this zone (CET/CEST per season).
+DISPLAY_TZ = ZoneInfo("Europe/Berlin")
+
+
+def _display_ts(utc_ts: str) -> str:
+    """Convert a stored UTC timestamp to the display zone (date part)."""
+    try:
+        dt = datetime.strptime(utc_ts, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError:
+        return utc_ts[:10]
+    return dt.astimezone(DISPLAY_TZ).strftime("%Y-%m-%d")
 
 
 def update_history(
